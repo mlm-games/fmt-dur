@@ -10,7 +10,7 @@ repository = "https://github.com/mlm-games/fmt-dur"
 homepage = "https://github.com/mlm-games/fmt-dur"
 documentation = "https://docs.rs/fmt-dur"
 readme = "README.md"
-keywords = ["duration", "time", "parse", "format", "human", "strict"]
+keywords = ["duration", "time", "parse", "format", "readable"]
 
 # categories = ["date-and-time", "parsing"]
 include = ["src/**", "README.md", "LICENSE*", "CHANGELOG.md", "Cargo.toml"]

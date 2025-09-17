@@ -23,7 +23,7 @@ jobs:
     outputs:
       name: ${{ steps.meta.outputs.name }}
       version: ${{ steps.meta.outputs.version }}
-      crate_path: ${{ steps.pkg.outputs.crate_path }}
+      crate_filename: ${{ steps.pkg.outputs.crate_filename }}
     steps:
       - uses: actions/checkout@v4
 
@@ -53,9 +53,17 @@ jobs:
           cargo package --locked
           NAME="${{ steps.meta.outputs.name }}"
           VER="${{ steps.meta.outputs.version }}"
-          CRATE="target/package/${NAME}-${VER}.crate"
+          CRATE_FILENAME="${NAME}-${VER}.crate"
+          CRATE="target/package/$CRATE_FILENAME"
           test -f "$CRATE"
-          echo "crate_path=$CRATE" >> "$GITHUB_OUTPUT"
+          echo "crate_filename=$CRATE_FILENAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload crate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: crate
+          path: target/package/*.crate
+          retention-days: 1
 
       - name: Publish to crates.io
         env:
@@ -72,11 +80,17 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     steps:
+      - name: Download crate artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: crate
+          path: dist
+
       - name: Prepare assets
         run: |
-          mkdir -p dist
-          cp "${{ needs.publish.outputs.crate_path }}" dist/
-          (cd dist && shasum -a 256 *.crate > SHA256SUMS.txt)
+          cd dist
+          shasum -a 256 *.crate > SHA256SUMS.txt
+          ls -la
 
       - name: Create/Update Release
         uses: softprops/action-gh-release@v2

@@ -1,6 +1,6 @@
 [package]
 name = "fmt-dur"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.85"
 authors = ["mlm-games <125530737+mlm-games@users.noreply.github.com>"]
@@ -23,7 +23,7 @@ loose = []
 serde = ["dep:serde"]
 
 [dependencies]
-serde = { version = "1", optional = true }
+serde = { version = "1.0", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true

@@ -543,7 +543,7 @@ fn normalize_input(input: &str) -> Result<String, ParseError> {
 
 fn format_mixed(d: Duration, max_frac_digits: u8) -> String {
     let mut rem_secs = d.as_secs();
-    let mut rem_nanos = d.subsec_nanos();
+    let rem_nanos = d.subsec_nanos();
 
     let mut out = String::new();
 
@@ -581,7 +581,7 @@ fn format_mixed(d: Duration, max_frac_digits: u8) -> String {
 }
 
 fn format_largest_unit_decimal(d: Duration, max_frac_digits: u8) -> String {
-    let mut total_nanos = (d.as_secs() as u128) * 1_000_000_000u128 + (d.subsec_nanos() as u128);
+    let total_nanos = (d.as_secs() as u128) * 1_000_000_000u128 + (d.subsec_nanos() as u128);
 
     if total_nanos == 0 {
         return "0s".to_string();
@@ -607,7 +607,7 @@ fn format_largest_unit_decimal(d: Duration, max_frac_digits: u8) -> String {
                 return format!("{}{}", whole, u.as_str());
             } else {
                 // fraction up to max_frac_digits
-                let mut frac = rem * 10u128.pow(max_frac_digits as u32) / u_nanos;
+                let frac = rem * 10u128.pow(max_frac_digits as u32) / u_nanos;
                 // Trim trailing zeros, but keep at least one digit.
                 let mut frac_str = format!("{:0width$}", frac, width = max_frac_digits as usize);
                 while frac_str.ends_with('0') && frac_str.len() > 1 {
@@ -627,7 +627,7 @@ fn format_fraction(secs: u64, nanos: u32, max_frac_digits: u8) -> String {
     }
     // Scale nanos (0..1_000_000_000) to fractional digits.
     let scale = 10u32.pow(max_frac_digits as u32);
-    let mut frac = (nanos as u128 * scale as u128) / 1_000_000_000u128;
+    let frac = (nanos as u128 * scale as u128) / 1_000_000_000u128;
     let mut frac_str = format!("{:0width$}", frac, width = max_frac_digits as usize);
     // Trim trailing zeros.
     while frac_str.ends_with('0') && frac_str.len() > 1 {

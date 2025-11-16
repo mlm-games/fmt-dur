@@ -1,30 +1,60 @@
 //! fmt_dur - strict Duration parsing/formatting.
 //!
-//! Grammar (strict mode, default):
-//!   Input := Segment { Segment }
-//!   Segment := Number Unit
-//!   Number := DIGIT+ [ "." DIGIT{1,9} ]   // decimal allowed at most once, and only in the last Segment
-//!   Unit   := "d" | "h" | "m" | "s" | "ms" | "us" | "ns"
-//!   Rules  :
-//!     - Units must appear in strictly descending order: d > h > m > s > ms > us > ns
-//!     - No duplicate units
-//!     - No spaces/underscores; lowercase only (enable "loose" feature to allow spaces/underscores and case-insensitive)
-//!     - At least one segment must be present (e.g., "0s" is valid)
-//!     - Up to 9 fractional digits (nanosecond precision). Fraction may appear only on the last segment.
+//! # Grammar (strict by default)
 //!
-//! Examples:
-//!   "2d3h4m", "90s", "1.5h", "250ms", "1m30s", "1m30.5s", "750us", "10ns"
+//! ```text
+//! Input := Segment { Segment }
+//! Segment := Number Unit
+//! Number := DIGIT+ [ "." DIGIT{1,9} ]   // decimal allowed at most once, and only in the last Segment
+//! Unit   := "d" | "h" | "m" | "s" | "ms" | "us" | "ns"
+//! ```
 //!
-//! Overview:
-//!   - parse("1.5h") -> Duration
-//!   - parse_with("1.5h", &ParseOptions::strict().saturating()) -> Duration (saturates on overflow)
-//!   - format(duration) -> "2d3h4m5.25s" (default, mixed-units; decimals only on the last unit)
-//!   - format_with(duration, FormatOptions::largest_unit_decimal()) -> "1.5h"
+//! ## Rules
 //!
-//! Features:
-//!   - loose  : allows spaces and underscores between segments and case-insensitive units (ordering still enforced).
-//!   - serde  : enables serde::{Serialize, Deserialize} for DurationStr using this format.
+//! - Units must appear in strictly descending order: d > h > m > s > ms > us > ns
+//! - No duplicate units
+//! - No spaces/underscores; lowercase only (enable "loose" feature to allow spaces/underscores and case-insensitive)
+//! - At least one segment must be present (e.g., "0s" is valid)
+//! - Up to 9 fractional digits (nanosecond precision). Fraction may appear only on the last segment.
 //!
+//! # Examples
+//!
+//! Valid duration strings:
+//! - `"2d3h4m"`
+//! - `"90s"`
+//! - `"1.5h"`
+//! - `"250ms"`
+//! - `"1m30s"`
+//! - `"1m30.5s"`
+//! - `"750us"`
+//! - `"10ns"`
+//!
+//! # Usage
+//!
+//! ```rust
+//! use std::time::Duration;
+//! # use fmt_dur::{parse, parse_with, format, format_with, ParseOptions, FormatOptions};
+//!
+//! // Parse a duration string
+//! let duration = parse("1.5h").unwrap();
+//! assert_eq!(duration, Duration::from_secs(5400));
+//!
+//! // Parse with custom options (saturating on overflow)
+//! let duration = parse_with("1.5h", &ParseOptions::strict().saturating()).unwrap();
+//!
+//! // Format a duration (default: mixed-units; decimals only on the last unit)
+//! let formatted = format(duration);
+//! assert_eq!(formatted, "1h30m");
+//!
+//! // Format with custom options (largest unit with decimal)
+//! let formatted = format_with(duration, &FormatOptions::largest_unit_decimal());
+//! assert_eq!(formatted, "1.5h");
+//! ```
+//!
+//! # Features
+//!
+//! - **`loose`**: Allows spaces and underscores between segments and case-insensitive units (ordering still enforced).
+//! - **`serde`**: Enables `serde::{Serialize, Deserialize}` for [`DurationStr`] using this format.
 
 #![forbid(unsafe_code)]
 // #![deny(missing_docs)]
@@ -61,17 +91,49 @@ impl ParseOptions {
 }
 
 /// Parse a strict human duration using default options.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use fmt_dur::parse;
+///
+/// assert_eq!(parse("90s").unwrap(), Duration::from_secs(90));
+/// assert_eq!(parse("1.5h").unwrap(), Duration::from_secs(5400));
+/// assert_eq!(parse("2d3h4m").unwrap(), Duration::from_secs(2 * 86_400 + 3 * 3600 + 4 * 60));
+/// ```
 pub fn parse(input: &str) -> Result<Duration, ParseError> {
     parse_with(input, &ParseOptions::strict())
 }
 
 /// Parse with explicit options.
+///
+/// # Examples
+///
+/// ```
+/// use fmt_dur::{parse_with, ParseOptions};
+///
+/// let result = parse_with("999999999d", &ParseOptions::strict().saturating());
+/// assert!(result.is_ok());
+/// ```
 pub fn parse_with(input: &str, opts: &ParseOptions) -> Result<Duration, ParseError> {
     let s = normalize_input(input)?;
     Parser::new(&s, *opts).parse()
 }
 
-/// Format a Duration using mixed-units style (default), e.g. "2d3h4m5.25s", "250ms", "0s".
+/// Format a Duration using mixed-units style (default).
+///
+/// Examples: `"2d3h4m5.25s"`, `"250ms"`, `"0s"`.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use fmt_dur::format;
+///
+/// assert_eq!(format(Duration::from_secs(90)), "1m30s");
+/// assert_eq!(format(Duration::from_millis(250)), "250ms");
+/// ```
 pub fn format(d: Duration) -> String {
     format_with(d, &FormatOptions::mixed())
 }
@@ -82,7 +144,7 @@ pub enum FormatStyle {
     /// Mixed units, descending, with decimals only on the last (seconds) component.
     /// Sub-second durations use ms/us/ns.
     Mixed,
-    /// Single largest unit with a decimal fraction if needed, e.g., "1.5h", "90s", "0.123s".
+    /// Single largest unit with a decimal fraction if needed, e.g., `"1.5h"`, `"90s"`, `"0.123s"`.
     /// This style cannot always be finite-decimal exact (e.g., 30s in hours),
     /// but it still round-trips because the parser accepts up to 9 fractional digits.
     LargestUnitDecimal,
@@ -118,6 +180,17 @@ impl FormatOptions {
 }
 
 /// Format with options.
+///
+/// # Examples
+///
+/// ```
+/// use std::time::Duration;
+/// use fmt_dur::{format_with, FormatOptions};
+///
+/// let d = Duration::from_secs(5400);
+/// let s = format_with(d, &FormatOptions::largest_unit_decimal());
+/// assert_eq!(s, "1.5h");
+/// ```
 pub fn format_with(d: Duration, opts: &FormatOptions) -> String {
     match opts.style {
         FormatStyle::Mixed => format_mixed(d, opts.max_frac_digits),
@@ -138,16 +211,29 @@ pub enum ParseError {
     InvalidUnit(usize),
     /// Units must be strictly descending (e.g., h cannot follow s).
     OutOfOrderUnit {
+        /// The previous unit that appeared earlier.
         prev: Unit,
+        /// The next unit that violated ordering.
         next: Unit,
+        /// Byte index where the violation occurred.
         index: usize,
     },
     /// Unit appeared more than once.
-    DuplicateUnit { unit: Unit, index: usize },
+    DuplicateUnit {
+        /// The duplicated unit.
+        unit: Unit,
+        /// Byte index of the duplicate.
+        index: usize,
+    },
     /// A decimal number was found before the last segment.
     DecimalNotLast(usize),
     /// Too many fractional digits (> 9).
-    TooPreciseFraction { digits: usize, index: usize },
+    TooPreciseFraction {
+        /// Number of digits found.
+        digits: usize,
+        /// Byte index of the fraction.
+        index: usize,
+    },
     /// Overflow (value exceeds Duration::MAX) and behavior was set to Error.
     Overflow,
 }
@@ -186,14 +272,22 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
+/// Time unit for duration parsing and formatting.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Unit {
+pub enum Unit {
+    /// Days
     D,
+    /// Hours
     H,
+    /// Minutes
     M,
+    /// Seconds
     S,
+    /// Milliseconds
     Ms,
+    /// Microseconds
     Us,
+    /// Nanoseconds
     Ns,
 }
 

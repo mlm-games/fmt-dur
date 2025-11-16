@@ -875,7 +875,7 @@ mod tests {
         );
         assert_eq!(
             super::parse("1h_250ms").unwrap(),
-            std::time::Duration::from_millis(362_250)
+            std::time::Duration::from_millis(3_600_250)
         );
     }
 }

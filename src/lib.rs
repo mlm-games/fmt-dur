@@ -445,8 +445,8 @@ impl<'a> Parser<'a> {
                 }
                 let frac_value = frac
                     .bytes()
-                    .try_fold(0u128, |acc, b| {
-                        if (b'0'..=b'9').contains(&b) {
+                    .try_fold(0u128, |acc, b: u8| {
+                        if b.is_ascii_digit() {
                             Some(acc * 10 + u128::from(b - b'0'))
                         } else {
                             None
@@ -625,7 +625,7 @@ fn normalize_input(input: &str) -> Result<String, ParseError> {
             if !b.is_ascii() {
                 return Err(ParseError::InvalidChar(i));
             }
-            if b == b' ' || b == b'_' || (b'A'..=b'Z').contains(&b) {
+            if b == b' ' || b == b'_' || b.is_ascii_uppercase() {
                 return Err(ParseError::InvalidChar(i));
             }
         }

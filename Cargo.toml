@@ -1,6 +1,6 @@
 [package]
 name = "fmt-dur"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 rust-version = "1.85"
 authors = ["mlm-games <125530737+mlm-games@users.noreply.github.com>"]
